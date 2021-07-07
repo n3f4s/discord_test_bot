@@ -24,15 +24,12 @@ object Bot extends App {
 
   val token = sys.env("DISCORD_TEST_BOT")
   val gid = sys.env("GUILD_ID")
-  println("Starting")
   val client: GatewayDiscordClient = (DiscordClient.create(token).login().block())
-  println("Creating command")
   val pingCmd = ((ApplicationCommandRequest.builder())
                    name "ping"
                    description "Test ping command with cooldown"
                    build)
 
-  println("Registering command")
   val restClient = client.getRestClient
   val appId = restClient.getApplicationId.block
 
@@ -42,7 +39,6 @@ object Bot extends App {
      onErrorResume (e ⇒ Mono.empty())
      block)
 
-  println("Listening to command")
   (client
      on new ReactiveEventAdapter() {
        val cooldown_table = Map[Long, ZonedDateTime]()
@@ -54,22 +50,16 @@ object Bot extends App {
            .getMember()
            .toScala
            .map(mem ⇒ {
-                  print(s"${mem.getId().asString()}, ")
-                  println(cooldown_table.map{ case (k, _) ⇒ k }.mkString(", "))
                   if(cooldown_table.contains(mem.getId().asLong())) {
                     val prev_time = cooldown_table(mem.getId().asLong())
                     val now = ZonedDateTime.now()
-                    print("Checking CD")
                     if(prev_time.plusSeconds(10).isBefore(now)) {
-                      println("CD over")
                       cooldown_table(mem.getId().asLong()) = now
                       "pong"
                     } else {
-                      println("CD active")
                       "Cooldown active"
                     }
                   } else {
-                    println("Adding user to the CD table")
                     cooldown_table += (mem.getId().asLong() → ZonedDateTime.now())
                     "pong"
                   }
