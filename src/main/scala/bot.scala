@@ -25,19 +25,20 @@ object Bot extends App {
   val token = sys.env("DISCORD_TEST_BOT")
   val gid = sys.env("GUILD_ID")
   val client: GatewayDiscordClient = (DiscordClient.create(token).login().block())
-  val pingCmd = ((ApplicationCommandRequest.builder())
-                   name "ping"
-                   description "Test ping command with cooldown"
-                   build)
+  val pingCmd = (ApplicationCommandRequest.builder()
+                   .name ("ping")
+                   .description ("Test ping command")
+                   .build)
 
   val restClient = client.getRestClient
   val appId = restClient.getApplicationId.block
 
-  ((restClient.getApplicationService)
-     createGuildApplicationCommand (appId, Snowflake.asLong(gid), pingCmd)
-     doOnError (err ⇒ println(s"Can't create command: ${err}"))
-     onErrorResume (e ⇒ Mono.empty())
-     block)
+  (restClient
+     .getApplicationService
+     .createGuildApplicationCommand (appId, Snowflake.asLong(gid), pingCmd)
+     .doOnError (err ⇒ println(s"Can't create command: ${err}"))
+     .onErrorResume (e ⇒ Mono.empty())
+     .block)
 
   (client
      on new ReactiveEventAdapter() {
@@ -49,21 +50,7 @@ object Bot extends App {
            .getInteraction()
            .getMember()
            .toScala
-           .map(mem ⇒ {
-                  if(cooldown_table.contains(mem.getId().asLong())) {
-                    val prev_time = cooldown_table(mem.getId().asLong())
-                    val now = ZonedDateTime.now()
-                    if(prev_time.plusSeconds(10).isBefore(now)) {
-                      cooldown_table(mem.getId().asLong()) = now
-                      "pong"
-                    } else {
-                      "Cooldown active"
-                    }
-                  } else {
-                    cooldown_table += (mem.getId().asLong() → ZonedDateTime.now())
-                    "pong"
-                  }
-                })
+           .map(mem ⇒ { "pong" })
            .getOrElse("Error: no member")
            evt.reply(reply)
          } else {
